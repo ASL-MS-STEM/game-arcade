@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Game Arcade</title>
+<style>
+  :root {
+    --bg: #f4f2ee; --card: #ffffff; --ink: #1d1c1a; --muted: #67635c;
+    --line: #e2ded6; --accent: #2f6fde; --shadow: 0 1px 2px rgb(0 0 0 / .06), 0 4px 14px rgb(0 0 0 / .06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151618; --card: #1f2124; --ink: #ecebe8; --muted: #a09d97;
+            --line: #2e3034; --accent: #7aa7ff; --shadow: 0 1px 2px rgb(0 0 0 / .4); }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { max-width: 1100px; margin: 0 auto; padding: 28px 16px 8px; }
+  h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2.1rem); letter-spacing: -.01em; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  .back { display: inline-block; margin-bottom: 8px; color: var(--accent); text-decoration: none; font-size: .95rem; }
+  .back:hover { text-decoration: underline; }
+  .grid { max-width: 1100px; margin: 0 auto; padding: 16px 16px 40px;
+          display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .card { display: flex; flex-direction: column; text-align: left; padding: 0; cursor: pointer;
+          background: var(--card); color: inherit; font: inherit; border: 1px solid var(--line);
+          border-radius: 12px; overflow: hidden; box-shadow: var(--shadow);
+          transition: transform .15s ease, border-color .15s ease; }
+  .card:hover, .card:focus-visible { transform: translateY(-3px); border-color: var(--accent); outline: none; }
+  .thumb { position: relative; aspect-ratio: 16 / 10; background: #23262b; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: pixelated; }
+  .thumb .fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px;
+                     color: #fff; font-weight: 700; font-size: 1.3rem; text-align: center;
+                     background: linear-gradient(135deg, #3a4ccf, #8d3fcf); }
+  .play { position: absolute; right: 10px; bottom: 10px; width: 40px; height: 40px; border-radius: 50%;
+          background: rgb(0 0 0 / .6); display: grid; place-items: center; opacity: 0; transition: opacity .15s; }
+  .play::after { content: ""; border-left: 14px solid #fff; border-top: 9px solid transparent;
+                 border-bottom: 9px solid transparent; margin-left: 4px; }
+  .card:hover .play, .card:focus-visible .play { opacity: 1; }
+  .caption { padding: 10px 14px 13px; }
+  .caption strong { display: block; font-size: 1.05rem; }
+  .caption span { color: var(--muted); font-size: .92rem; }
+
+  dialog { width: min(96vw, 1000px); max-height: 96vh; padding: 0; border: 0; border-radius: 12px;
+           background: var(--card); color: var(--ink); overflow: hidden; }
+  dialog::backdrop { background: rgb(0 0 0 / .75); }
+  .bar { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+  .bar .who { flex: 1; min-width: 0; }
+  .bar .who strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar .who span { color: var(--muted); font-size: .9rem; }
+  .bar a, .bar button { font: inherit; font-size: .9rem; color: var(--ink); background: transparent;
+                        border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+                        cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .bar a:hover, .bar button:hover { border-color: var(--accent); }
+  #frame { aspect-ratio: 16 / 10; max-height: calc(96vh - 110px); width: 100%; background: #000; }
+  #frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+  #frame:fullscreen { width: 100vw; height: 100vh; max-height: none; aspect-ratio: auto; }
+  /* "Expand": where real full screen is blocked (e.g. Google Sites), fill the whole embed box instead */
+  dialog.expanded { width: 100vw; height: 100vh; max-width: none; max-height: none; border-radius: 0; margin: 0; }
+  dialog.expanded[open] { display: flex; flex-direction: column; }
+  dialog.expanded #frame { flex: 1; aspect-ratio: auto; max-height: none; min-height: 0; }
+  dialog.expanded .hint { display: none; }
+  .hint { margin: 0; padding: 8px 16px 10px; color: var(--muted); font-size: .88rem; }
+  @media (max-width: 520px) { .bar .newtab { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../">← All terms</a>
+  <h1 id="heading">Student Game Arcade</h1>
+  <p>Pick a game to play. Click inside the game once so it hears your keyboard.</p>
+</header>
+<main class="grid" id="grid"></main>
+
+<dialog id="player" aria-labelledby="ptitle">
+  <div class="bar">
+    <div class="who"><strong id="ptitle"></strong><span id="pstudent"></span></div>
+    <a id="newtab" class="newtab" target="_blank" rel="noopener">Open full page ↗</a>
+    <button id="fs">⛶ Full screen</button>
+    <button id="close" aria-label="Close game">✕ Close</button>
+  </div>
+  <div id="frame"></div>
+  <p class="hint" id="phint"></p>
+</dialog>
+
+<script src="games.js"></script>
+<script>
+  const grid = document.getElementById('grid');
+  const dlg = document.getElementById('player');
+  const frame = document.getElementById('frame');
+  if (window.TERM) {
+    document.getElementById('heading').textContent = `${TERM.label} Games`;
+    document.title = `${TERM.label} Games`;
+  }
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  for (const g of window.GAMES || []) {
+    const card = document.createElement('button');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="thumb">
+        ${g.thumb ? `<img src="${esc(g.thumb)}" alt="" loading="lazy">` : `<div class="fallback">${esc(g.title)}</div>`}
+        <div class="play"></div>
+      </div>
+      <div class="caption"><strong>${esc(g.title)}</strong><span>by ${esc(g.student)}</span></div>`;
+    card.addEventListener('click', () => open(g));
+    grid.append(card);
+  }
+
+  // Single-file mode (tools/build_single.py): the game's page and package are inside this file.
+  // The package is handed to pygbag by answering its download request in the game's own frame.
+  function inlinePage(g) {
+    const shim = `<script>(function(){var P=${JSON.stringify(g.pkg)},N=${JSON.stringify(g.pkgName)},B=null,F=window.fetch.bind(window);
+window.fetch=function(i,o){var u=String(typeof i==="string"?i:(i&&i.url)||i).split(/[?#]/)[0];
+if(u===N||u.slice(-N.length-1)==="/"+N){if(!B){var s=atob(P);B=new Uint8Array(s.length);for(var k=0;k<s.length;k++)B[k]=s.charCodeAt(k);}
+return Promise.resolve(new Response(B.slice(),{status:200,headers:{"Content-Type":"application/gzip","Content-Length":String(B.length)}}));}
+return F(i,o);};})();<\/script>`;
+    return g.page.replace('<html lang="en-us">', '<html lang="en-us">' + shim);
+  }
+
+  function open(g) {
+    const url = `games/${encodeURIComponent(g.folder)}/index.html`;
+    document.getElementById('ptitle').textContent = g.title;
+    document.getElementById('pstudent').textContent = 'by ' + g.student;
+    document.getElementById('newtab').href = url;
+    document.getElementById('newtab').hidden = !!g.page;
+    const hint = [g.controls, g.credits].filter(Boolean).join('  ·  ');
+    document.getElementById('phint').textContent = hint;
+    document.getElementById('phint').hidden = !hint;
+    const iframe = document.createElement('iframe');
+    iframe.title = g.title;
+    iframe.allow = 'autoplay; fullscreen; gamepad';
+    iframe.allowFullscreen = true;
+    if (g.page) iframe.srcdoc = inlinePage(g); else iframe.src = url;
+    frame.replaceChildren(iframe);
+    dlg.showModal();
+    iframe.focus();
+  }
+  // Real full screen where the host page allows it; otherwise grow the popup to fill the embed box.
+  const fsBtn = document.getElementById('fs');
+  const canFullscreen = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  const setExpanded = on => {
+    dlg.classList.toggle('expanded', on);
+    fsBtn.textContent = on ? '⤡ Shrink' : '⤢ Expand';
+    frame.querySelector('iframe')?.focus();
+  };
+  fsBtn.textContent = canFullscreen ? '⛶ Full screen' : '⤢ Expand';
+  fsBtn.onclick = async () => {
+    if (canFullscreen) {
+      try { await (frame.requestFullscreen || frame.webkitRequestFullscreen).call(frame);
+            frame.querySelector('iframe')?.focus(); return; } catch (e) { /* fall through to expand */ }
+    }
+    setExpanded(!dlg.classList.contains('expanded'));
+  };
+  document.getElementById('close').onclick = () => dlg.close();
+  dlg.addEventListener('close', () => { if (!canFullscreen) setExpanded(false); });
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });   // click outside closes
+  dlg.addEventListener('close', () => { frame.innerHTML = ''; });                 // removing the iframe stops game + sound
+</script>
+</body>
+</html>
