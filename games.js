@@ -3,7 +3,7 @@ window.GAMES = [
   {
     "folder": "llama_run",
     "title": "Walter's Cave Run",
-    "student": "Student Name",
+    "student": "Chris G.",
     "controls": "Enter to start · Arrows/WASD move · Space jumps",
     "credits": "",
     "thumb": "thumbs/llama_run.png"
